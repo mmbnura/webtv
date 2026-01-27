@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Indian TV Channels</title>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<style>
+body {
+  margin: 0;
+  background: #0d0d0d;
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+
+/* Section title */
+.section-title {
+  font-size: 22px;
+  padding: 12px;
+  background: #111;
+  border-left: 6px solid #ff9800;
+}
+
+/* Grid layout */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+
+/* Channel tile */
+.tile {
+  background: #1c1c1c;
+  padding: 16px;
+  text-align: center;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+}
+
+.tile:focus {
+  border: 3px solid #ff9800;
+  background: #2a2a2a;
+}
+
+.tile:hover {
+  background: #2a2a2a;
+}
+
+/* Video */
+video {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  display: none;
+  z-index: 999;
+}
+</style>
+</head>
+
+<body>
+
+<div id="content"></div>
+
+<video id="video" controls></video>
+
+<script>
+const PLAYLIST_URL = "https://iptv-org.github.io/iptv/index.m3u";
+const content = document.getElementById("content");
+const video = document.getElementById("video");
+
+let hls;
+
+/* Fetch playlist */
+fetch(PLAYLIST_URL)
+  .then(r => r.text())
+  .then(parseM3U);
+
+/* Parse and filter */
+function parseM3U(data) {
+  const lines = data.split("\n");
+  let name = "", country = "", language = "";
+
+  const tamil = [];
+  const hindi = [];
+  const english = [];
+
+  lines.forEach(line => {
+    line = line.trim();
+
+    if (line.startsWith("#EXTINF")) {
+      name = line.split(",").pop();
+      country = (line.match(/country="([^"]+)"/) || [])[1];
+      language = (line.match(/language="([^"]+)"/) || [])[1];
+    }
+
+    if (line.startsWith("http") && line.includes(".m3u8")) {
+      if (country === "IN") {
+        const channel = { name, url: line };
+
+        if (language?.toLowerCase().includes("tamil")) {
+          tamil.push(channel);
+        } else if (language?.toLowerCase().includes("hindi")) {
+          hindi.push(channel);
+        } else if (language?.toLowerCase().includes("english")) {
+          english.push(channel);
+        }
+      }
+    }
+  });
+
+  renderSection("Tamil Channels", tamil);
+  renderSection("Hindi Channels", hindi);
+  renderSection("English Channels", english);
+
+  enableRemoteNavigation();
+}
+
+/* Render grid */
+function renderSection(title, channels) {
+  if (!channels.length) return;
+
+  const heading = document.createElement("div");
+  heading.className = "section-title";
+  heading.textContent = title;
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+
+  channels.forEach((c, index) => {
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    tile.tabIndex = 0;
+    tile.textContent = c.name;
+
+    tile.onclick = () => playChannel(c.url);
+    tile.onkeydown = e => {
+      if (e.key === "Enter") playChannel(c.url);
+    };
+
+    grid.appendChild(tile);
+  });
+
+  content.appendChild(heading);
+  content.appendChild(grid);
+}
+
+/* Play channel fullscreen */
+function playChannel(url) {
+  video.style.display = "block";
+
+  if (hls) hls.destroy();
+
+  if (Hls.isSupported()) {
+    hls = new Hls();
+    hls.loadSource(url);
+    hls.attachMedia(video);
+  } else {
+    video.src = url;
+  }
+
+  video.play();
+  video.requestFullscreen?.();
+}
+
+/* Remote navigation helper */
+function enableRemoteNavigation() {
+  const tiles = document.querySelectorAll(".tile");
+  if (tiles.length) tiles[0].focus();
+}
+
+/* Exit fullscreen with Back / Esc */
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" || e.key === "Backspace") {
+    video.pause();
+    video.style.display = "none";
+    document.exitFullscreen?.();
+  }
+});
+</script>
+
+</body>
+</html>
