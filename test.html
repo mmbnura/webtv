@@ -1,25 +1,70 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>IPTV Test</title>
+<meta charset="UTF-8">
+<title>Indian Channels – Test</title>
+
+<style>
+body {
+  margin: 0;
+  background: #000;
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+
+h2 {
+  margin: 12px;
+  border-left: 6px solid orange;
+  padding-left: 10px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  padding: 10px;
+}
+
+.tile {
+  background: #1c1c1c;
+  padding: 14px;
+  text-align: center;
+  border-radius: 6px;
+}
+</style>
 </head>
+
 <body>
-  <h1>IPTV Test Page</h1>
-  <pre id="output">Loading…</pre>
+
+<h2>Indian Channels (Test)</h2>
+<div id="grid" class="grid">Loading…</div>
 
 <script>
-const url = "https://iptv-org.github.io/api/channels.json";
-
-fetch(url)
+fetch("https://iptv-org.github.io/api/channels.json")
   .then(r => r.json())
-  .then(data => {
-    document.getElementById("output").textContent =
-      "Loaded channels: " + data.length;
+  .then(channels => {
+    const grid = document.getElementById("grid");
+    grid.innerHTML = "";
+
+    let count = 0;
+
+    channels.forEach(c => {
+      if (c.country === "IN") {
+        const div = document.createElement("div");
+        div.className = "tile";
+        div.textContent = c.name;
+        grid.appendChild(div);
+        count++;
+      }
+    });
+
+    if (count === 0) {
+      grid.textContent = "No Indian channels found";
+    }
   })
   .catch(err => {
-    document.getElementById("output").textContent =
-      "ERROR: " + err;
+    document.getElementById("grid").textContent = "Error loading data";
+    console.error(err);
   });
 </script>
 
