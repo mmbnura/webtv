@@ -14,6 +14,11 @@ body {
   font-family: Arial, sans-serif;
 }
 
+#status {
+  padding: 20px;
+  font-size: 18px;
+}
+
 /* Section title */
 .section-title {
   font-size: 22px;
@@ -45,11 +50,6 @@ body {
   background: #2a2a2a;
 }
 
-.tile:hover {
-  background: #2a2a2a;
-}
-
-/* Video */
 video {
   position: fixed;
   top: 0;
@@ -65,12 +65,14 @@ video {
 
 <body>
 
+<div id="status">Loading Indian TV channels…</div>
 <div id="content"></div>
 
 <video id="video" controls></video>
 
 <script>
 const PLAYLIST_URL = "https://iptv-org.github.io/iptv/index.m3u";
+const status = document.getElementById("status");
 const content = document.getElementById("content");
 const video = document.getElementById("video");
 
@@ -79,11 +81,14 @@ let hls;
 /* Fetch playlist */
 fetch(PLAYLIST_URL)
   .then(r => r.text())
-  .then(parseM3U);
+  .then(parseM3U)
+  .catch(() => {
+    status.textContent = "Failed to load playlist. Check internet.";
+  });
 
-/* Parse and filter */
 function parseM3U(data) {
   const lines = data.split("\n");
+
   let name = "", country = "", language = "";
 
   const tamil = [];
@@ -95,24 +100,40 @@ function parseM3U(data) {
 
     if (line.startsWith("#EXTINF")) {
       name = line.split(",").pop();
-      country = (line.match(/country="([^"]+)"/) || [])[1];
-      language = (line.match(/language="([^"]+)"/) || [])[1];
+      country = (line.match(/country="([^"]+)"/) || [])[1] || "";
+      language = (line.match(/language="([^"]+)"/) || [])[1] || "";
     }
 
     if (line.startsWith("http") && line.includes(".m3u8")) {
       if (country === "IN") {
+        const lname = name.toLowerCase();
+        const llang = language.toLowerCase();
         const channel = { name, url: line };
 
-        if (language?.toLowerCase().includes("tamil")) {
+        if (
+          llang.includes("tamil") ||
+          lname.includes("tamil") ||
+          lname.includes("sun") ||
+          lname.includes("k tv")
+        ) {
           tamil.push(channel);
-        } else if (language?.toLowerCase().includes("hindi")) {
+        }
+        else if (
+          llang.includes("hindi") ||
+          lname.includes("zee") ||
+          lname.includes("sony") ||
+          lname.includes("star")
+        ) {
           hindi.push(channel);
-        } else if (language?.toLowerCase().includes("english")) {
+        }
+        else {
           english.push(channel);
         }
       }
     }
   });
+
+  status.remove();
 
   renderSection("Tamil Channels", tamil);
   renderSection("Hindi Channels", hindi);
@@ -132,15 +153,15 @@ function renderSection(title, channels) {
   const grid = document.createElement("div");
   grid.className = "grid";
 
-  channels.forEach((c, index) => {
+  channels.forEach(c => {
     const tile = document.createElement("div");
     tile.className = "tile";
     tile.tabIndex = 0;
     tile.textContent = c.name;
 
-    tile.onclick = () => playChannel(c.url);
+    tile.onclick = () => play(c.url);
     tile.onkeydown = e => {
-      if (e.key === "Enter") playChannel(c.url);
+      if (e.key === "Enter") play(c.url);
     };
 
     grid.appendChild(tile);
@@ -150,8 +171,8 @@ function renderSection(title, channels) {
   content.appendChild(grid);
 }
 
-/* Play channel fullscreen */
-function playChannel(url) {
+/* Play fullscreen */
+function play(url) {
   video.style.display = "block";
 
   if (hls) hls.destroy();
@@ -168,13 +189,13 @@ function playChannel(url) {
   video.requestFullscreen?.();
 }
 
-/* Remote navigation helper */
+/* Focus first tile */
 function enableRemoteNavigation() {
   const tiles = document.querySelectorAll(".tile");
   if (tiles.length) tiles[0].focus();
 }
 
-/* Exit fullscreen with Back / Esc */
+/* Exit video */
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" || e.key === "Backspace") {
     video.pause();
