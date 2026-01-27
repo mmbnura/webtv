@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <title>Indian TV Channels</title>
 
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
 <style>
 body {
   margin: 0;
@@ -37,6 +39,16 @@ h2 {
 .tile:focus {
   border: 3px solid orange;
 }
+
+video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  display: none;
+  z-index: 999;
+}
 </style>
 </head>
 
@@ -51,9 +63,14 @@ h2 {
 <h2>English Channels</h2>
 <div id="english" class="grid"></div>
 
-<div id="status" style="padding:12px">Loading Indian channels…</div>
+<div id="status" style="padding:12px">Loading channels…</div>
+
+<video id="video" controls></video>
 
 <script>
+const CHANNELS_URL = "https://iptv-org.github.io/api/channels.json";
+const STREAMS_URL  = "https://iptv-org.github.io/api/streams.json";
+
 const tamilKeywords = [
   "sun", "vijay", "k tv", "zee tamil", "polimer",
   "kalaignar", "raj", "jaya", "thanthi",
@@ -76,48 +93,100 @@ const englishKeywords = [
   "star world", "india today"
 ];
 
-fetch("https://iptv-org.github.io/api/channels.json")
-  .then(r => r.json())
-  .then(channels => {
-    const tamil = document.getElementById("tamil");
-    const hindi = document.getElementById("hindi");
-    const english = document.getElementById("english");
-    const status = document.getElementById("status");
+const video = document.getElementById("video");
+let hls;
 
-    let total = 0;
+/* Load data */
+Promise.all([
+  fetch(CHANNELS_URL).then(r => r.json()),
+  fetch(STREAMS_URL).then(r => r.json())
+]).then(([channels, streams]) => init(channels, streams));
 
-    channels.forEach(c => {
-      if (c.country !== "IN") return;
+function init(channels, streams) {
+  const status = document.getElementById("status");
 
-      const name = c.name.toLowerCase();
-      const tile = document.createElement("div");
-      tile.className = "tile";
-      tile.tabIndex = 0;
-      tile.textContent = c.name;
-
-      if (tamilKeywords.some(k => name.includes(k))) {
-        tamil.appendChild(tile);
-        total++;
-      }
-      else if (hindiKeywords.some(k => name.includes(k))) {
-        hindi.appendChild(tile);
-        total++;
-      }
-      else if (englishKeywords.some(k => name.includes(k))) {
-        english.appendChild(tile);
-        total++;
-      }
-    });
-
-    status.textContent = "Displayed channels: " + total;
-
-    const first = document.querySelector(".tile");
-    if (first) first.focus();
-  })
-  .catch(err => {
-    document.getElementById("status").textContent = "Error loading channels";
-    console.error(err);
+  /* Build channelId → HLS stream map */
+  const streamMap = {};
+  streams.forEach(s => {
+    if (
+      s.channel &&
+      s.url &&
+      s.url.includes(".m3u8") &&
+      !streamMap[s.channel]
+    ) {
+      streamMap[s.channel] = s.url;
+    }
   });
+
+  let shown = 0;
+
+  channels.forEach(c => {
+    if (c.country !== "IN") return;
+    const streamUrl = streamMap[c.id];
+    if (!streamUrl) return;
+
+    const name = c.name.toLowerCase();
+    const tile = createTile(c.name, streamUrl);
+
+    if (tamilKeywords.some(k => name.includes(k))) {
+      document.getElementById("tamil").appendChild(tile);
+      shown++;
+    }
+    else if (hindiKeywords.some(k => name.includes(k))) {
+      document.getElementById("hindi").appendChild(tile);
+      shown++;
+    }
+    else if (englishKeywords.some(k => name.includes(k))) {
+      document.getElementById("english").appendChild(tile);
+      shown++;
+    }
+  });
+
+  status.textContent = "Playable channels loaded: " + shown;
+
+  const first = document.querySelector(".tile");
+  if (first) first.focus();
+}
+
+function createTile(name, url) {
+  const tile = document.createElement("div");
+  tile.className = "tile";
+  tile.tabIndex = 0;
+  tile.textContent = name;
+
+  tile.onclick = () => play(url);
+  tile.onkeydown = e => {
+    if (e.key === "Enter") play(url);
+  };
+
+  return tile;
+}
+
+function play(url) {
+  video.style.display = "block";
+
+  if (hls) hls.destroy();
+
+  if (Hls.isSupported()) {
+    hls = new Hls();
+    hls.loadSource(url);
+    hls.attachMedia(video);
+  } else {
+    video.src = url;
+  }
+
+  video.play();
+  video.requestFullscreen?.();
+}
+
+/* Exit video with Back / Esc */
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" || e.key === "Backspace") {
+    video.pause();
+    video.style.display = "none";
+    document.exitFullscreen?.();
+  }
+});
 </script>
 
 </body>
