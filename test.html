@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>IPTV Test</title>
+</head>
+<body>
+  <h1>IPTV Test Page</h1>
+  <pre id="output">Loading…</pre>
+
+<script>
+const url = "https://iptv-org.github.io/api/channels.json";
+
+fetch(url)
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById("output").textContent =
+      "Loaded channels: " + data.length;
+  })
+  .catch(err => {
+    document.getElementById("output").textContent =
+      "ERROR: " + err;
+  });
+</script>
+
+</body>
+</html>
