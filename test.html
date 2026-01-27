@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Indian Channels – Test</title>
+<title>Indian TV Channels</title>
 
 <style>
 body {
@@ -30,43 +30,63 @@ h2 {
   padding: 14px;
   text-align: center;
   border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+}
+
+.tile:focus {
+  border: 3px solid orange;
 }
 </style>
 </head>
 
 <body>
 
-<h2>Indian Channels (Test)</h2>
-<div id="grid" class="grid">Loading…</div>
+<h2>Tamil Channels</h2>
+<div id="tamil" class="grid">Loading…</div>
+
+<h2>Hindi Channels</h2>
+<div id="hindi" class="grid">Loading…</div>
+
+<h2>English Channels</h2>
+<div id="english" class="grid">Loading…</div>
 
 <script>
 fetch("https://iptv-org.github.io/api/channels.json")
   .then(r => r.json())
   .then(channels => {
-    const grid = document.getElementById("grid");
-    grid.innerHTML = "";
+    const tamil = document.getElementById("tamil");
+    const hindi = document.getElementById("hindi");
+    const english = document.getElementById("english");
 
-    let count = 0;
+    tamil.innerHTML = "";
+    hindi.innerHTML = "";
+    english.innerHTML = "";
 
     channels.forEach(c => {
-      if (c.country === "IN") {
-        const div = document.createElement("div");
-        div.className = "tile";
-        div.textContent = c.name;
-        grid.appendChild(div);
-        count++;
+      if (c.country !== "IN") return;
+
+      const name = c.name.toLowerCase();
+      const langs = (c.languages || []).join(" ").toLowerCase();
+
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      tile.tabIndex = 0;
+      tile.textContent = c.name;
+
+      if (
+        langs.includes("tam") ||
+        name.includes("tamil") ||
+        name.includes("sun")
+      ) {
+        tamil.appendChild(tile);
       }
-    });
-
-    if (count === 0) {
-      grid.textContent = "No Indian channels found";
-    }
-  })
-  .catch(err => {
-    document.getElementById("grid").textContent = "Error loading data";
-    console.error(err);
-  });
-</script>
-
-</body>
-</html>
+      else if (
+        langs.includes("hin") ||
+        name.includes("zee") ||
+        name.includes("sony")
+      ) {
+        hindi.appendChild(tile);
+      }
+      else {
+        english.app
