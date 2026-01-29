@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>MMB Player</title>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -30,11 +30,6 @@ body {
   color: #ff3b3b;
 }
 
-#clock {
-  font-size: 14px;
-  opacity: 0.8;
-}
-
 /* ===== MAIN LAYOUT ===== */
 #main {
   display: grid;
@@ -45,7 +40,6 @@ body {
 /* ===== CATEGORIES ===== */
 #categories {
   background: #121217;
-  border-right: 1px solid #222;
   overflow-y: auto;
 }
 
@@ -62,10 +56,9 @@ body {
   outline: none;
 }
 
-/* ===== CHANNEL LIST ===== */
+/* ===== CHANNELS ===== */
 #channels {
   background: #14141a;
-  border-right: 1px solid #222;
   overflow-y: auto;
 }
 
@@ -73,9 +66,6 @@ body {
   padding: 12px 16px;
   cursor: pointer;
   border-bottom: 1px solid #1f1f1f;
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 .channel:focus,
@@ -87,15 +77,15 @@ body {
 /* ===== PLAYER ===== */
 #player {
   background: #000;
-  padding: 15px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
 }
 
 #videoBox {
-  background: #000;
   flex: 1;
   border: 2px solid #1f1f1f;
+  position: relative;
 }
 
 video {
@@ -105,40 +95,29 @@ video {
 }
 
 #nowPlaying {
-  padding: 10px;
+  padding: 8px;
   font-size: 14px;
   background: #111;
-  border-top: 1px solid #222;
 }
 
-/* ===== SCROLLBAR ===== */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-thumb {
-  background: #444;
-}
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: #444; }
 </style>
 </head>
 
 <body>
 
-<!-- ===== TOP BAR ===== -->
 <div id="topbar">
   <div id="logo">MMB Player</div>
-  <div id="clock"></div>
+  <div>Live Channels TV</div>
 </div>
 
-<!-- ===== MAIN ===== -->
 <div id="main">
 
-  <!-- Categories -->
   <div id="categories"></div>
-
-  <!-- Channels -->
   <div id="channels"></div>
 
-  <!-- Player -->
   <div id="player">
     <div id="videoBox">
       <video id="video" controls></video>
@@ -149,33 +128,8 @@ video {
 </div>
 
 <script>
-/* ===== CLOCK ===== */
-setInterval(() => {
-  const d = new Date();
-  document.getElementById("clock").textContent =
-    d.toLocaleTimeString() + " | " + d.toDateString();
-}, 1000);
-
-/* ===== DEMO DATA (replace later with IPTV logic) ===== */
-const data = {
-  "All": [
-    { name: "DD News", url: "" },
-    { name: "Sun TV", url: "" },
-    { name: "Zee TV", url: "" }
-  ],
-  "Tamil": [
-    { name: "Sun TV", url: "" },
-    { name: "Vijay TV", url: "" }
-  ],
-  "Hindi": [
-    { name: "Zee TV", url: "" },
-    { name: "Sony TV", url: "" }
-  ],
-  "English": [
-    { name: "CNN", url: "" },
-    { name: "BBC World", url: "" }
-  ]
-};
+const CHANNELS_URL = "https://iptv-org.github.io/api/channels.json";
+const STREAMS_URL  = "https://iptv-org.github.io/api/streams.json";
 
 const categoriesDiv = document.getElementById("categories");
 const channelsDiv = document.getElementById("channels");
@@ -183,53 +137,93 @@ const video = document.getElementById("video");
 const nowPlaying = document.getElementById("nowPlaying");
 
 let hls;
+let isFullscreen = false;
 
-/* ===== LOAD CATEGORIES ===== */
-Object.keys(data).forEach((cat, idx) => {
-  const div = document.createElement("div");
-  div.className = "category";
-  div.tabIndex = 0;
-  div.textContent = cat;
+/* ===== LOAD IPTV DATA ===== */
+Promise.all([
+  fetch(CHANNELS_URL).then(r => r.json()),
+  fetch(STREAMS_URL).then(r => r.json())
+]).then(([channels, streams]) => init(channels, streams));
 
-  div.onclick = () => loadChannels(cat, div);
-  div.onkeydown = e => e.key === "Enter" && loadChannels(cat, div);
+function init(channels, streams) {
 
-  categoriesDiv.appendChild(div);
-  if (idx === 0) loadChannels(cat, div);
-});
+  /* Build channelId → stream map */
+  const streamMap = {};
+  streams.forEach(s => {
+    if (s.channel && s.url && s.url.includes(".m3u8") && !streamMap[s.channel]) {
+      streamMap[s.channel] = s.url;
+    }
+  });
+
+  /* Build categories dynamically */
+  const categoryMap = {};
+
+  channels.forEach(c => {
+    const url = streamMap[c.id];
+    if (!url) return;
+
+    const category = (c.categories && c.categories.length)
+      ? c.categories[0]
+      : "Other";
+
+    if (!categoryMap[category]) categoryMap[category] = [];
+
+    categoryMap[category].push({
+      name: c.name,
+      url
+    });
+  });
+
+  renderCategories(categoryMap);
+}
+
+/* ===== RENDER CATEGORIES ===== */
+function renderCategories(map) {
+  categoriesDiv.innerHTML = "";
+  Object.keys(map).forEach((cat, i) => {
+    const div = document.createElement("div");
+    div.className = "category";
+    div.tabIndex = 0;
+    div.textContent = cat;
+
+    div.onclick = () => loadChannels(cat, map);
+    div.onkeydown = e => e.key === "Enter" && loadChannels(cat, map);
+
+    categoriesDiv.appendChild(div);
+
+    if (i === 0) loadChannels(cat, map, div);
+  });
+}
 
 /* ===== LOAD CHANNELS ===== */
-function loadChannels(category, el) {
+function loadChannels(cat, map, el) {
   document.querySelectorAll(".category").forEach(c => c.classList.remove("active"));
-  el.classList.add("active");
+  if (el) el.classList.add("active");
 
   channelsDiv.innerHTML = "";
 
-  data[category].forEach(ch => {
+  map[cat].forEach(ch => {
     const div = document.createElement("div");
     div.className = "channel";
     div.tabIndex = 0;
     div.textContent = ch.name;
 
-    div.onclick = () => playChannel(ch);
-    div.onkeydown = e => e.key === "Enter" && playChannel(ch);
+    div.onclick = () => play(ch, div);
+    div.onkeydown = e => e.key === "Enter" && play(ch, div);
 
     channelsDiv.appendChild(div);
   });
+
+  const first = channelsDiv.querySelector(".channel");
+  if (first) first.focus();
 }
 
 /* ===== PLAY CHANNEL ===== */
-function playChannel(ch) {
+function play(ch, el) {
   document.querySelectorAll(".channel").forEach(c => c.classList.remove("active"));
-  event.target.classList.add("active");
+  el.classList.add("active");
 
   nowPlaying.textContent = "Now Playing: " + ch.name;
-
-  if (!ch.url) {
-    video.pause();
-    video.removeAttribute("src");
-    return;
-  }
 
   if (hls) hls.destroy();
 
@@ -243,6 +237,26 @@ function playChannel(ch) {
 
   video.play();
 }
+
+/* ===== CLICK VIDEO → FULLSCREEN TOGGLE ===== */
+video.addEventListener("click", () => {
+  if (!isFullscreen) {
+    video.requestFullscreen?.();
+    isFullscreen = true;
+  } else {
+    document.exitFullscreen?.();
+    isFullscreen = false;
+  }
+});
+
+/* ===== BACK / ESC HANDLING ===== */
+document.addEventListener("keydown", e => {
+  if (isFullscreen && (e.key === "Escape" || e.key === "Backspace")) {
+    e.preventDefault();
+    document.exitFullscreen?.();
+    isFullscreen = false;
+  }
+});
 </script>
 
 </body>
