@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>WebTV Home</title>
+
+<style>
+body {
+  margin: 0;
+  background: #000;
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+
+h1 {
+  padding: 20px;
+  margin: 0;
+  background: #111;
+  text-align: center;
+  font-size: 28px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+  padding: 30px;
+}
+
+.tile {
+  background: #1c1c1c;
+  padding: 30px 20px;
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.tile:hover {
+  background: #2a2a2a;
+  transform: scale(1.03);
+}
+
+.tile:focus {
+  border: 4px solid orange;
+  background: #2a2a2a;
+}
+
+.tile h2 {
+  margin: 0 0 10px 0;
+  font-size: 22px;
+}
+
+.tile p {
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.8;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📺 WebTV Home</h1>
+
+<div class="grid">
+
+  <a href="indexALL.html">
+    <div class="tile" tabindex="0">
+      <h2>All Channels</h2>
+      <p>Complete IPTV list</p>
+    </div>
+  </a>
+
+  <a href="indexIND.html">
+    <div class="tile" tabindex="0">
+      <h2>Indian Channels</h2>
+      <p>India-specific TV list</p>
+    </div>
+  </a>
+
+  <a href="indianTV.html">
+    <div class="tile" tabindex="0">
+      <h2>Indian TV (Tiles)</h2>
+      <p>Curated Indian channels</p>
+    </div>
+  </a>
+
+  <a href="test.html">
+    <div class="tile" tabindex="0">
+      <h2>Test / Debug</h2>
+      <p>Data & connectivity checks</p>
+    </div>
+  </a>
+
+</div>
+
+<script>
+  // Focus first tile for TV remote navigation
+  const firstTile = document.querySelector(".tile");
+  if (firstTile) firstTile.focus();
+</script>
+
+</body>
+</html>
