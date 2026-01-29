@@ -163,7 +163,6 @@ video {
 const CHANNELS_URL = "https://iptv-org.github.io/api/channels.json";
 const STREAMS_URL  = "https://iptv-org.github.io/api/streams.json";
 
-const categoriesDiv = document.getElementById("categories");
 const channelsDiv = document.getElementById("channels");
 const video = document.getElementById("video");
 const nowPlaying = document.getElementById("nowPlaying");
@@ -220,7 +219,7 @@ function renderCategories() {
     div.onclick = () => loadChannels(categoryMap[cat], div);
     div.onkeydown = e => e.key === "Enter" && loadChannels(categoryMap[cat], div);
 
-    categoriesDiv.appendChild(div);
+    document.getElementById("categories").appendChild(div);
     if (i === 0) loadChannels(categoryMap[cat], div);
   });
 }
@@ -280,35 +279,62 @@ favCategory.onclick = () => {
 /* ===== SEARCH (ENTER ONLY) ===== */
 searchBox.addEventListener("keydown", e => {
   if (e.key !== "Enter") return;
-
   const q = searchBox.value.toLowerCase().trim();
   if (!q) return;
 
-  const results = allChannels.filter(c =>
-    c.name.toLowerCase().includes(q)
+  loadChannels(
+    allChannels.filter(c => c.name.toLowerCase().includes(q))
   );
-
-  loadChannels(results);
 });
 
-/* ===== PLAY ===== */
+/* ===== PLAY WITH BUFFERING ===== */
 function play(ch, el) {
   document.querySelectorAll(".channel").forEach(c => c.classList.remove("active"));
   el.classList.add("active");
 
   nowPlaying.textContent = "Now Playing: " + ch.name;
 
-  if (hls) hls.destroy();
-
-  if (Hls.isSupported()) {
-    hls = new Hls();
-    hls.loadSource(ch.url);
-    hls.attachMedia(video);
-  } else {
-    video.src = ch.url;
+  if (hls) {
+    hls.destroy();
+    hls = null;
   }
 
-  video.play();
+  if (Hls.isSupported()) {
+    hls = new Hls({
+      maxBufferLength: 60,
+      maxMaxBufferLength: 120,
+      backBufferLength: 30,
+      startFragPrefetch: true,
+      liveSyncDuration: 6,
+      liveMaxLatencyDuration: 15,
+      capLevelToPlayerSize: true,
+      abrEwmaFastLive: 5,
+      abrEwmaSlowLive: 9,
+      enableWorker: true,
+      lowLatencyMode: false
+    });
+
+    hls.loadSource(ch.url);
+    hls.attachMedia(video);
+
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play();
+    });
+
+    hls.on(Hls.Events.ERROR, (event, data) => {
+      if (data.fatal) {
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          hls.startLoad();
+        }
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          hls.recoverMediaError();
+        }
+      }
+    });
+  } else {
+    video.src = ch.url;
+    video.play();
+  }
 }
 
 /* ===== FULLSCREEN TOGGLE ===== */
