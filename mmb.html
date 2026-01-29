@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>MMB Player</title>
@@ -33,7 +33,7 @@ body {
 /* ===== MAIN LAYOUT ===== */
 #main {
   display: grid;
-  grid-template-columns: 260px 360px 1fr;
+  grid-template-columns: 280px 380px 1fr;
   height: calc(100vh - 60px);
 }
 
@@ -41,6 +41,7 @@ body {
 #categories {
   background: #121217;
   overflow-y: auto;
+  border-right: 1px solid #222;
 }
 
 .category {
@@ -56,10 +57,22 @@ body {
   outline: none;
 }
 
+/* ===== SEARCH ===== */
+#searchBox {
+  width: calc(100% - 24px);
+  margin: 12px;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 4px;
+  border: none;
+  outline: none;
+}
+
 /* ===== CHANNELS ===== */
 #channels {
   background: #14141a;
   overflow-y: auto;
+  border-right: 1px solid #222;
 }
 
 .channel {
@@ -85,7 +98,6 @@ body {
 #videoBox {
   flex: 1;
   border: 2px solid #1f1f1f;
-  position: relative;
 }
 
 video {
@@ -108,16 +120,24 @@ video {
 
 <body>
 
+<!-- ===== TOP BAR ===== -->
 <div id="topbar">
   <div id="logo">MMB Player</div>
   <div>Live Channels TV</div>
 </div>
 
+<!-- ===== MAIN ===== -->
 <div id="main">
 
-  <div id="categories"></div>
+  <!-- Categories -->
+  <div id="categories">
+    <input id="searchBox" type="text" placeholder="Search channel…" />
+  </div>
+
+  <!-- Channels -->
   <div id="channels"></div>
 
+  <!-- Player -->
   <div id="player">
     <div id="videoBox">
       <video id="video" controls></video>
@@ -135,9 +155,12 @@ const categoriesDiv = document.getElementById("categories");
 const channelsDiv = document.getElementById("channels");
 const video = document.getElementById("video");
 const nowPlaying = document.getElementById("nowPlaying");
+const searchBox = document.getElementById("searchBox");
 
 let hls;
 let isFullscreen = false;
+let categoryMapGlobal = {};
+let allChannels = [];
 
 /* ===== LOAD IPTV DATA ===== */
 Promise.all([
@@ -147,7 +170,7 @@ Promise.all([
 
 function init(channels, streams) {
 
-  /* Build channelId → stream map */
+  /* Build channelId → HLS stream map */
   const streamMap = {};
   streams.forEach(s => {
     if (s.channel && s.url && s.url.includes(".m3u8") && !streamMap[s.channel]) {
@@ -155,7 +178,7 @@ function init(channels, streams) {
     }
   });
 
-  /* Build categories dynamically */
+  /* Build categories */
   const categoryMap = {};
 
   channels.forEach(c => {
@@ -168,41 +191,40 @@ function init(channels, streams) {
 
     if (!categoryMap[category]) categoryMap[category] = [];
 
-    categoryMap[category].push({
-      name: c.name,
-      url
-    });
+    const channelObj = { name: c.name, url };
+    categoryMap[category].push(channelObj);
+    allChannels.push(channelObj);
   });
 
+  categoryMapGlobal = categoryMap;
   renderCategories(categoryMap);
 }
 
 /* ===== RENDER CATEGORIES ===== */
 function renderCategories(map) {
-  categoriesDiv.innerHTML = "";
   Object.keys(map).forEach((cat, i) => {
     const div = document.createElement("div");
     div.className = "category";
     div.tabIndex = 0;
     div.textContent = cat;
 
-    div.onclick = () => loadChannels(cat, map);
-    div.onkeydown = e => e.key === "Enter" && loadChannels(cat, map);
+    div.onclick = () => loadChannels(cat, div);
+    div.onkeydown = e => e.key === "Enter" && loadChannels(cat, div);
 
     categoriesDiv.appendChild(div);
 
-    if (i === 0) loadChannels(cat, map, div);
+    if (i === 0) loadChannels(cat, div);
   });
 }
 
 /* ===== LOAD CHANNELS ===== */
-function loadChannels(cat, map, el) {
+function loadChannels(cat, el) {
   document.querySelectorAll(".category").forEach(c => c.classList.remove("active"));
   if (el) el.classList.add("active");
 
   channelsDiv.innerHTML = "";
 
-  map[cat].forEach(ch => {
+  categoryMapGlobal[cat].forEach(ch => {
     const div = document.createElement("div");
     div.className = "channel";
     div.tabIndex = 0;
@@ -217,6 +239,36 @@ function loadChannels(cat, map, el) {
   const first = channelsDiv.querySelector(".channel");
   if (first) first.focus();
 }
+
+/* ===== SEARCH ===== */
+searchBox.addEventListener("input", () => {
+  const q = searchBox.value.toLowerCase().trim();
+
+  if (q === "") {
+    const activeCat = document.querySelector(".category.active");
+    if (activeCat) activeCat.click();
+    return;
+  }
+
+  channelsDiv.innerHTML = "";
+
+  allChannels
+    .filter(c => c.name.toLowerCase().includes(q))
+    .forEach(ch => {
+      const div = document.createElement("div");
+      div.className = "channel";
+      div.tabIndex = 0;
+      div.textContent = ch.name;
+
+      div.onclick = () => play(ch, div);
+      div.onkeydown = e => e.key === "Enter" && play(ch, div);
+
+      channelsDiv.appendChild(div);
+    });
+
+  const first = channelsDiv.querySelector(".channel");
+  if (first) first.focus();
+});
 
 /* ===== PLAY CHANNEL ===== */
 function play(ch, el) {
@@ -238,7 +290,7 @@ function play(ch, el) {
   video.play();
 }
 
-/* ===== CLICK VIDEO → FULLSCREEN TOGGLE ===== */
+/* ===== VIDEO CLICK → FULLSCREEN ===== */
 video.addEventListener("click", () => {
   if (!isFullscreen) {
     video.requestFullscreen?.();
@@ -249,7 +301,7 @@ video.addEventListener("click", () => {
   }
 });
 
-/* ===== BACK / ESC HANDLING ===== */
+/* ===== BACK / ESC ===== */
 document.addEventListener("keydown", e => {
   if (isFullscreen && (e.key === "Escape" || e.key === "Backspace")) {
     e.preventDefault();
