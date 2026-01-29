@@ -47,6 +47,11 @@ h1 {
   background: #2a2a2a;
 }
 
+.tile.primary {
+  border: 3px solid #ff3b3b;
+  background: #221111;
+}
+
 .tile h2 {
   margin: 0 0 10px 0;
   font-size: 22px;
@@ -71,6 +76,15 @@ a {
 
 <div class="grid">
 
+  <!-- MAIN PLAYER -->
+  <a href="mmb.html">
+    <div class="tile primary" tabindex="0">
+      <h2>MMB Player</h2>
+      <p>Live IPTV player (Categories • Channels • Player)</p>
+    </div>
+  </a>
+
+  <!-- OTHER PAGES -->
   <a href="indexALL.html">
     <div class="tile" tabindex="0">
       <h2>All Channels</h2>
@@ -95,7 +109,7 @@ a {
   <a href="test.html">
     <div class="tile" tabindex="0">
       <h2>Test / Debug</h2>
-      <p>Data & connectivity checks</p>
+      <p>Connectivity & data checks</p>
     </div>
   </a>
 
