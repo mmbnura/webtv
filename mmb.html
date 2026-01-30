@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>MMB Player v_B_300126</title>
+<title> MMB Player v_C_300126 </title>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
@@ -123,14 +123,19 @@ video {
 /* ===== NOW PLAYING BAR ===== */
 #nowPlayingBar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 12px;
   padding: 8px;
   font-size: 14px;
   background: #111;
 }
 
+#qualityInfo {
+  opacity: 0.8;
+}
+
 #qualityBtn {
+  margin-left: auto;
   background: #222;
   color: #fff;
   border: 1px solid #444;
@@ -176,16 +181,13 @@ video {
 
 <div id="main">
 
-  <!-- Categories -->
   <div id="categories">
     <input id="searchBox" type="text" placeholder="Search channel & press OK" />
     <div id="favCategory" class="category">⭐ Favorites</div>
   </div>
 
-  <!-- Channels -->
   <div id="channels"></div>
 
-  <!-- Player -->
   <div id="player">
     <div id="videoBox">
       <video id="video" controls></video>
@@ -195,6 +197,7 @@ video {
 
     <div id="nowPlayingBar">
       <span id="nowPlayingText">Select a channel</span>
+      <span id="qualityInfo">• --</span>
       <button id="qualityBtn">⚙ Quality</button>
     </div>
   </div>
@@ -210,6 +213,7 @@ const video = document.getElementById("video");
 const searchBox = document.getElementById("searchBox");
 const favCategory = document.getElementById("favCategory");
 const nowPlayingText = document.getElementById("nowPlayingText");
+const qualityInfo = document.getElementById("qualityInfo");
 const qualityBtn = document.getElementById("qualityBtn");
 const qualityMenu = document.getElementById("qualityMenu");
 
@@ -326,16 +330,16 @@ searchBox.addEventListener("keydown", e => {
   if (e.key !== "Enter") return;
   const q = searchBox.value.toLowerCase().trim();
   if (!q) return;
-
   loadChannels(allChannels.filter(c => c.name.toLowerCase().includes(q)));
 });
 
-/* ===== PLAY WITH BUFFERING ===== */
+/* ===== PLAY ===== */
 function play(ch, el) {
   document.querySelectorAll(".channel").forEach(c => c.classList.remove("active"));
   el.classList.add("active");
 
   nowPlayingText.textContent = "Now Playing: " + ch.name;
+  qualityInfo.textContent = "• Auto";
 
   if (hls) {
     hls.destroy();
@@ -366,12 +370,13 @@ function play(ch, el) {
       video.play();
     });
 
-    hls.on(Hls.Events.ERROR, (e, data) => {
-      if (data.fatal) {
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
-        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+    hls.on(Hls.Events.LEVEL_SWITCHED, (e, data) => {
+      const lvl = hls.levels[data.level];
+      if (lvl && lvl.height) {
+        qualityInfo.textContent = "• Auto · " + lvl.height + "p";
       }
     });
+
   } else {
     video.src = ch.url;
     video.play();
@@ -382,43 +387,37 @@ function play(ch, el) {
 function buildQualityMenu(hls) {
   qualityMenu.innerHTML = "";
   addQualityItem("Auto", -1);
-
-  hls.levels.forEach((level, i) => {
-    const label = level.height ? level.height + "p" : "Level " + i;
-    addQualityItem(label, i);
+  hls.levels.forEach((l, i) => {
+    addQualityItem(l.height ? l.height + "p" : "Level " + i, i);
   });
 }
 
-function addQualityItem(label, levelIndex) {
-  const div = document.createElement("div");
-  div.textContent = label;
-  div.tabIndex = 0;
-
-  div.onclick = () => {
-    selectQuality(levelIndex);
-    qualityMenu.style.display = "none";
-  };
-
-  div.onkeydown = e => {
-    if (e.key === "Enter") {
-      selectQuality(levelIndex);
-      qualityMenu.style.display = "none";
-    }
-  };
-
-  qualityMenu.appendChild(div);
+function addQualityItem(label, index) {
+  const d = document.createElement("div");
+  d.textContent = label;
+  d.tabIndex = 0;
+  d.onclick = () => { selectQuality(index); qualityMenu.style.display="none"; };
+  d.onkeydown = e => e.key==="Enter" && d.onclick();
+  qualityMenu.appendChild(d);
 }
 
-function selectQuality(levelIndex) {
+function selectQuality(index) {
   if (!currentHls) return;
-  currentHls.currentLevel = levelIndex;
+  currentHls.currentLevel = index;
+  if (index === -1) {
+    qualityInfo.textContent = "• Auto";
+  } else {
+    const lvl = currentHls.levels[index];
+    if (lvl && lvl.height) {
+      qualityInfo.textContent = "• " + lvl.height + "p";
+    }
+  }
 }
 
 /* ===== QUALITY BUTTON ===== */
 qualityBtn.onclick = () => {
   qualityMenu.style.display =
     qualityMenu.style.display === "none" ? "block" : "none";
-
   const first = qualityMenu.querySelector("div");
   if (first) first.focus();
 };
@@ -428,7 +427,6 @@ video.addEventListener("click", e => {
   e.preventDefault();
   e.stopPropagation();
   if (video.paused) video.play();
-
   if (!document.fullscreenElement) {
     video.requestFullscreen?.();
     isFullscreen = true;
@@ -438,22 +436,15 @@ video.addEventListener("click", e => {
   }
 });
 
-/* ===== HIDE QUALITY IN FULLSCREEN ===== */
+/* ===== FULLSCREEN UI CONTROL ===== */
 document.addEventListener("fullscreenchange", () => {
   if (document.fullscreenElement) {
     qualityBtn.style.display = "none";
     qualityMenu.style.display = "none";
+    qualityInfo.style.display = "none";
   } else {
     qualityBtn.style.display = "inline-block";
-  }
-});
-
-/* ===== BACK / ESC ===== */
-document.addEventListener("keydown", e => {
-  if (isFullscreen && (e.key === "Escape" || e.key === "Backspace")) {
-    e.preventDefault();
-    document.exitFullscreen?.();
-    isFullscreen = false;
+    qualityInfo.style.display = "inline";
   }
 });
 </script>
