@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title> MMB Player v_C_300126 </title>
+<title> MMB Player v_D_300126 </title>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
@@ -122,16 +122,12 @@ video {
 
 /* ===== NOW PLAYING BAR ===== */
 #nowPlayingBar {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
   padding: 8px;
   font-size: 14px;
   background: #111;
-}
-
-#qualityInfo {
-  opacity: 0.8;
 }
 
 #qualityBtn {
@@ -142,6 +138,15 @@ video {
   padding: 6px 10px;
   font-size: 13px;
   cursor: pointer;
+}
+
+/* Centered quality text */
+.centerQuality {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0.8;
+  pointer-events: none;
 }
 
 /* ===== QUALITY MENU ===== */
@@ -181,13 +186,16 @@ video {
 
 <div id="main">
 
+  <!-- Categories -->
   <div id="categories">
     <input id="searchBox" type="text" placeholder="Search channel & press OK" />
     <div id="favCategory" class="category">⭐ Favorites</div>
   </div>
 
+  <!-- Channels -->
   <div id="channels"></div>
 
+  <!-- Player -->
   <div id="player">
     <div id="videoBox">
       <video id="video" controls></video>
@@ -197,7 +205,9 @@ video {
 
     <div id="nowPlayingBar">
       <span id="nowPlayingText">Select a channel</span>
-      <span id="qualityInfo">• --</span>
+
+      <span id="qualityInfo" class="centerQuality">• --</span>
+
       <button id="qualityBtn">⚙ Quality</button>
     </div>
   </div>
@@ -325,7 +335,7 @@ favCategory.onclick = () => {
   loadChannels(Object.values(favorites), favCategory);
 };
 
-/* ===== SEARCH (ENTER ONLY) ===== */
+/* ===== SEARCH ===== */
 searchBox.addEventListener("keydown", e => {
   if (e.key !== "Enter") return;
   const q = searchBox.value.toLowerCase().trim();
@@ -341,10 +351,7 @@ function play(ch, el) {
   nowPlayingText.textContent = "Now Playing: " + ch.name;
   qualityInfo.textContent = "• Auto";
 
-  if (hls) {
-    hls.destroy();
-    hls = null;
-  }
+  if (hls) hls.destroy();
 
   if (Hls.isSupported()) {
     currentHls = new Hls({
@@ -376,7 +383,6 @@ function play(ch, el) {
         qualityInfo.textContent = "• Auto · " + lvl.height + "p";
       }
     });
-
   } else {
     video.src = ch.url;
     video.play();
@@ -422,11 +428,12 @@ qualityBtn.onclick = () => {
   if (first) first.focus();
 };
 
-/* ===== FULLSCREEN TOGGLE (NO PAUSE) ===== */
+/* ===== FULLSCREEN (NO PAUSE) ===== */
 video.addEventListener("click", e => {
   e.preventDefault();
   e.stopPropagation();
   if (video.paused) video.play();
+
   if (!document.fullscreenElement) {
     video.requestFullscreen?.();
     isFullscreen = true;
@@ -436,7 +443,7 @@ video.addEventListener("click", e => {
   }
 });
 
-/* ===== FULLSCREEN UI CONTROL ===== */
+/* ===== FULLSCREEN UI ===== */
 document.addEventListener("fullscreenchange", () => {
   if (document.fullscreenElement) {
     qualityBtn.style.display = "none";
