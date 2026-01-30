@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>MMB Player v A.300126 </title>
+<title>MMB Player v B.300126 </title>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
@@ -154,7 +154,30 @@ video {
     <div id="videoBox">
       <video id="video" controls></video>
     </div>
-    <div id="nowPlaying">Select a channel</div>
+
+    <div id="nowPlayingBar" style="
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:8px;
+  font-size:14px;
+  background:#111;
+">
+  <span id="nowPlayingText">Select a channel</span>
+
+  <button id="qualityBtn" style="
+    background:#222;
+    color:#fff;
+    border:1px solid #444;
+    padding:6px 10px;
+    font-size:13px;
+    cursor:pointer;
+  ">
+    ⚙ Quality
+  </button>
+</div>
+
+    
   </div>
 
 </div>
