@@ -338,8 +338,17 @@ function play(ch, el) {
 }
 
 /* ===== FULLSCREEN TOGGLE ===== */
-video.addEventListener("click", () => {
-  if (!isFullscreen) {
+video.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  // Force playback (prevent pause)
+  if (video.paused) {
+    video.play();
+  }
+
+  // Toggle fullscreen only
+  if (!document.fullscreenElement) {
     video.requestFullscreen?.();
     isFullscreen = true;
   } else {
