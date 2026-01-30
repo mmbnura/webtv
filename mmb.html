@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>MMB Player v B.300126 </title>
+<title>MMB Player</title>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
@@ -106,6 +106,7 @@ body {
   padding: 12px;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 #videoBox {
@@ -119,10 +120,45 @@ video {
   background: black;
 }
 
-#nowPlaying {
+/* ===== NOW PLAYING BAR ===== */
+#nowPlayingBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 8px;
   font-size: 14px;
   background: #111;
+}
+
+#qualityBtn {
+  background: #222;
+  color: #fff;
+  border: 1px solid #444;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ===== QUALITY MENU ===== */
+#qualityMenu {
+  display: none;
+  position: absolute;
+  right: 20px;
+  bottom: 60px;
+  background: #111;
+  border: 1px solid #333;
+  z-index: 999;
+}
+
+#qualityMenu div {
+  padding: 10px;
+  cursor: pointer;
+}
+
+#qualityMenu div:focus {
+  background: #ff3b3b;
+  color: #000;
+  outline: none;
 }
 
 /* Scrollbar */
@@ -155,29 +191,12 @@ video {
       <video id="video" controls></video>
     </div>
 
-    <div id="nowPlayingBar" style="
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:8px;
-  font-size:14px;
-  background:#111;
-">
-  <span id="nowPlayingText">Select a channel</span>
+    <div id="qualityMenu"></div>
 
-  <button id="qualityBtn" style="
-    background:#222;
-    color:#fff;
-    border:1px solid #444;
-    padding:6px 10px;
-    font-size:13px;
-    cursor:pointer;
-  ">
-    ⚙ Quality
-  </button>
-</div>
-
-    
+    <div id="nowPlayingBar">
+      <span id="nowPlayingText">Select a channel</span>
+      <button id="qualityBtn">⚙ Quality</button>
+    </div>
   </div>
 
 </div>
@@ -188,11 +207,14 @@ const STREAMS_URL  = "https://iptv-org.github.io/api/streams.json";
 
 const channelsDiv = document.getElementById("channels");
 const video = document.getElementById("video");
-const nowPlaying = document.getElementById("nowPlaying");
 const searchBox = document.getElementById("searchBox");
 const favCategory = document.getElementById("favCategory");
+const nowPlayingText = document.getElementById("nowPlayingText");
+const qualityBtn = document.getElementById("qualityBtn");
+const qualityMenu = document.getElementById("qualityMenu");
 
-let hls;
+let hls = null;
+let currentHls = null;
 let isFullscreen = false;
 let categoryMap = {};
 let allChannels = [];
@@ -247,7 +269,7 @@ function renderCategories() {
   });
 }
 
-/* ===== LOAD CHANNEL LIST ===== */
+/* ===== LOAD CHANNELS ===== */
 function loadChannels(list, el) {
   document.querySelectorAll(".category").forEach(c => c.classList.remove("active"));
   if (el) el.classList.add("active");
@@ -305,9 +327,7 @@ searchBox.addEventListener("keydown", e => {
   const q = searchBox.value.toLowerCase().trim();
   if (!q) return;
 
-  loadChannels(
-    allChannels.filter(c => c.name.toLowerCase().includes(q))
-  );
+  loadChannels(allChannels.filter(c => c.name.toLowerCase().includes(q)));
 });
 
 /* ===== PLAY WITH BUFFERING ===== */
@@ -315,7 +335,7 @@ function play(ch, el) {
   document.querySelectorAll(".channel").forEach(c => c.classList.remove("active"));
   el.classList.add("active");
 
-  nowPlaying.textContent = "Now Playing: " + ch.name;
+  nowPlayingText.textContent = "Now Playing: " + ch.name;
 
   if (hls) {
     hls.destroy();
@@ -323,7 +343,7 @@ function play(ch, el) {
   }
 
   if (Hls.isSupported()) {
-    hls = new Hls({
+    currentHls = new Hls({
       maxBufferLength: 60,
       maxMaxBufferLength: 120,
       backBufferLength: 30,
@@ -337,21 +357,19 @@ function play(ch, el) {
       lowLatencyMode: false
     });
 
+    hls = currentHls;
     hls.loadSource(ch.url);
     hls.attachMedia(video);
 
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      buildQualityMenu(hls);
       video.play();
     });
 
-    hls.on(Hls.Events.ERROR, (event, data) => {
+    hls.on(Hls.Events.ERROR, (e, data) => {
       if (data.fatal) {
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          hls.startLoad();
-        }
-        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-          hls.recoverMediaError();
-        }
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
       }
     });
   } else {
@@ -360,23 +378,73 @@ function play(ch, el) {
   }
 }
 
-/* ===== FULLSCREEN TOGGLE ===== */
-video.addEventListener("click", (e) => {
+/* ===== QUALITY MENU ===== */
+function buildQualityMenu(hls) {
+  qualityMenu.innerHTML = "";
+  addQualityItem("Auto", -1);
+
+  hls.levels.forEach((level, i) => {
+    const label = level.height ? level.height + "p" : "Level " + i;
+    addQualityItem(label, i);
+  });
+}
+
+function addQualityItem(label, levelIndex) {
+  const div = document.createElement("div");
+  div.textContent = label;
+  div.tabIndex = 0;
+
+  div.onclick = () => {
+    selectQuality(levelIndex);
+    qualityMenu.style.display = "none";
+  };
+
+  div.onkeydown = e => {
+    if (e.key === "Enter") {
+      selectQuality(levelIndex);
+      qualityMenu.style.display = "none";
+    }
+  };
+
+  qualityMenu.appendChild(div);
+}
+
+function selectQuality(levelIndex) {
+  if (!currentHls) return;
+  currentHls.currentLevel = levelIndex;
+}
+
+/* ===== QUALITY BUTTON ===== */
+qualityBtn.onclick = () => {
+  qualityMenu.style.display =
+    qualityMenu.style.display === "none" ? "block" : "none";
+
+  const first = qualityMenu.querySelector("div");
+  if (first) first.focus();
+};
+
+/* ===== FULLSCREEN TOGGLE (NO PAUSE) ===== */
+video.addEventListener("click", e => {
   e.preventDefault();
   e.stopPropagation();
+  if (video.paused) video.play();
 
-  // Force playback (prevent pause)
-  if (video.paused) {
-    video.play();
-  }
-
-  // Toggle fullscreen only
   if (!document.fullscreenElement) {
     video.requestFullscreen?.();
     isFullscreen = true;
   } else {
     document.exitFullscreen?.();
     isFullscreen = false;
+  }
+});
+
+/* ===== HIDE QUALITY IN FULLSCREEN ===== */
+document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement) {
+    qualityBtn.style.display = "none";
+    qualityMenu.style.display = "none";
+  } else {
+    qualityBtn.style.display = "inline-block";
   }
 });
 
