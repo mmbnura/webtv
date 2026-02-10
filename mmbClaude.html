@@ -8,13 +8,37 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="logo-section">
+            <div class="logo-icon">▶</div>
+            <div class="logo-text">
+                <h1>MMB Player</h1>
+                <span class="tagline">Live TV Streaming</span>
+            </div>
+        </div>
+        <div class="header-stats">
+            <div class="stat-item">
+                <span class="stat-value" id="channelCount">0</span>
+                <span class="stat-label">Channels</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="categoryCount">0</span>
+                <span class="stat-label">Categories</span>
+            </div>
+        </div>
+    </header>
+
     <div class="container">
         <!-- Categories Panel -->
         <div class="panel categories-panel">
-            <div class="panel-header">Categories</div>
+            <div class="panel-header">
+                <span>📂 Categories</span>
+            </div>
             <div class="panel-content" id="categoriesList">
                 <div class="category-item active" data-category="favorites">
-                    <span class="star">⭐</span> Favorites
+                    <span class="category-icon">⭐</span>
+                    <span class="category-name">Favorites</span>
                 </div>
                 <!-- Categories will be populated here -->
             </div>
@@ -23,8 +47,10 @@
         <!-- Channels Panel -->
         <div class="panel channels-panel">
             <div class="panel-header">
-                <span id="channelsPanelTitle">Channels</span>
-                <input type="text" id="searchInput" placeholder="Search channels..." />
+                <span id="channelsPanelTitle">📺 Channels</span>
+            </div>
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="🔍 Search channels..." />
             </div>
             <div class="panel-content" id="channelsList">
                 <!-- Channels will be populated here -->
@@ -36,7 +62,10 @@
             <div class="player-container">
                 <video id="videoPlayer" controls></video>
                 <div class="player-overlay" id="playerOverlay">
-                    <div class="player-message">Select a channel to start playing</div>
+                    <div class="overlay-content">
+                        <div class="player-icon">▶</div>
+                        <div class="player-message">Select a channel to start playing</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -44,10 +73,20 @@
 
     <!-- Status Bar -->
     <div class="status-bar">
-        <div class="status-left" id="nowPlaying">Now Playing: None</div>
-        <div class="status-center" id="qualityInfo">Auto · -</div>
+        <div class="status-left" id="nowPlaying">
+            <span class="status-icon">📡</span>
+            <span>Now Playing: None</span>
+        </div>
+        <div class="status-center" id="qualityInfo">
+            <span class="quality-badge">Auto</span>
+            <span class="quality-separator">·</span>
+            <span class="resolution">-</span>
+        </div>
         <div class="status-right">
-            <button id="qualitySelector" class="quality-btn">⚙ Quality</button>
+            <button id="qualitySelector" class="quality-btn">
+                <span class="btn-icon">⚙</span>
+                <span>Quality</span>
+            </button>
         </div>
     </div>
 
@@ -55,7 +94,7 @@
     <div class="modal" id="qualityModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Select Quality</h3>
+                <h3>⚙ Select Quality</h3>
                 <button class="close-btn" id="closeModal">&times;</button>
             </div>
             <div class="modal-body" id="qualityOptions">
