@@ -63,6 +63,11 @@ async function loadData() {
         console.error('Error loading data:', error);
         playerOverlay.querySelector('.player-message').textContent = 'Error loading channels';
     }
+
+    // Update header stats
+    document.getElementById('channelCount').textContent = channels.length;
+    document.getElementById('categoryCount').textContent = categories.size;
+    
 }
 
 // Render categories
@@ -263,21 +268,26 @@ function handleError(data) {
 }
 
 // Update quality info
+// Update quality info
 function updateQualityInfo() {
     if (!hls) return;
     
     const currentLevel = hls.currentLevel;
     const autoLevel = hls.autoLevelEnabled;
     
-    let qualityText = 'Auto';
+    const qualityBadge = qualityInfo.querySelector('.quality-badge');
+    const resolution = qualityInfo.querySelector('.resolution');
     
     if (currentLevel >= 0 && hls.levels[currentLevel]) {
         const level = hls.levels[currentLevel];
         const height = level.height;
-        qualityText = autoLevel ? `Auto · ${height}p` : `${height}p`;
+        
+        qualityBadge.textContent = autoLevel ? 'Auto' : `${height}p`;
+        resolution.textContent = `${height}p`;
+    } else {
+        qualityBadge.textContent = 'Auto';
+        resolution.textContent = '-';
     }
-    
-    qualityInfo.textContent = qualityText;
 }
 
 // Show quality selector
@@ -318,7 +328,7 @@ function showQualitySelector() {
         div.className = 'quality-option' + (hls.currentLevel === index && !hls.autoLevelEnabled ? ' active' : '');
         div.innerHTML = `
             <span>${level.height}p</span>
-            <span class="quality-badge">${Math.round(level.bitrate / 1000)} kbps</span>
+            <span class="quality-badge-modal">${Math.round(level.bitrate / 1000)} kbps</span>
         `;
         div.addEventListener('click', () => {
             hls.currentLevel = index;
